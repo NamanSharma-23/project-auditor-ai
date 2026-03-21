@@ -198,3 +198,16 @@ with st.sidebar:
     st.write("**Role:** Data Science & Viz Engineer")
     st.info("Turning complex datasets into interactive visual stories.")
     st.write("📍 Based in India")
+    st.divider()
+    st.subheader("Contribute Data")
+    with st.form("data_form",clear_on_submit=True):
+        new_days = st.number_input("Actual Days", min_value=1)
+        new_team = st.number_input("Team Size", min_value=1)
+        new_cost = st.number_input("Actual Cost ($)", min_value=100)
+        new_type = st.selectbox("Type", ["Web", "Mobile", "ML_Model", "Audit"])
+        new_ontime = st.radio("Was it on time?", [1, 0], format_func=lambda x: "Yes" if x==1 else "No")
+        
+        submitted = st.form_submit_button("Add to Training Set")
+        if submitted:
+            # Logic to append to CSV (We will build this next!)
+            st.success("Project added! The AI will learn from this on the next refresh.")
