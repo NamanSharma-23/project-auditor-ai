@@ -54,7 +54,7 @@ st.info("Adjust the sliders to see how Team Size and Duration affect project ris
 @st.cache_resource 
 def get_trained_models_with_metrics():
     try:
-        tdf = pd.read_csv("project_training.csv")
+        tdf = pd.read_csv("project_training.csv", index_col=False)
         # Ensure Project_Type is encoded
         tdf_encoded = pd.get_dummies(tdf, columns=["Project_Type"])
         
