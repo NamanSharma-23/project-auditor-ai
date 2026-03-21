@@ -6,3 +6,4 @@ Days,Team_Size,Actual_Cost,On_Time,Project_Type
 80,4,9000,0,Web
 15,2,1600,1,Mobile
 40,6,5000,0,ML_Model
+15,2,1000,1,Audit
