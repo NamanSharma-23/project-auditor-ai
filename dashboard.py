@@ -55,26 +55,35 @@ st.info("Adjust the sliders to see how Team Size and Duration affect project ris
 def get_trained_models_with_metrics():
     try:
         tdf = pd.read_csv("project_training.csv")
-        X = tdf[['Days', 'Team_Size']]
-        y_cost = tdf['Actual_Cost']
-        y_time = tdf['On_Time']
+        # Ensure Project_Type is encoded
+        tdf_encoded = pd.get_dummies(tdf, columns=["Project_Type"])
+        
+        # FIX: Ensure names match your CSV exactly (Actual_Cost with underscore)
+        # We also drop 'Project' if it exists in your training file
+        X = tdf_encoded.drop(columns=["Actual_Cost", "On_Time"], errors='ignore')
+        if 'Project' in X.columns: X = X.drop(columns=['Project'])
+            
+        y_cost = tdf_encoded['Actual_Cost']
+        y_time = tdf_encoded['On_Time']
+        
+        # Save column order to keep AI from getting "dizzy"
+        model_columns = list(X.columns)
         
         X_train, X_test, y_train, y_test = train_test_split(X, y_cost, test_size=0.2, random_state=42)
         c_model = LinearRegression().fit(X_train, y_train)
         cost_error = mean_absolute_error(y_test, c_model.predict(X_test))
         
-        importances = c_model.coef_ 
-        feature_names = X.columns
-        
         X_train_l, X_test_l, y_train_l, y_test_l = train_test_split(X, y_time, test_size=0.4, random_state=42)
         t_model = LogisticRegression().fit(X_train_l, y_train_l)
         time_accuracy = accuracy_score(y_test_l, t_model.predict(X_test_l))
         
-        return c_model, t_model, cost_error, time_accuracy
-    except:
-        return None, None, 0, 0
+        return c_model, t_model, cost_error, time_accuracy, model_columns
+    except Exception as e:
+        st.error(f"Error: {e}")
+        return None, None, 0, 0, []
 
-cost_model, time_model, mae, acc = get_trained_models_with_metrics()
+# Call it with the extra 'cols' variable
+cost_model, time_model, mae, acc, cols = get_trained_models_with_metrics()
 
 # --- PREDICTION LOGIC (Everything moved inside here) ---
 if cost_model and time_model:
@@ -84,10 +93,20 @@ if cost_model and time_model:
     with col_in2:
         input_team = st.slider("Team Size", 1, 20, 5)
 
-    # Calculate Predictions
-    features = np.array([[input_days, input_team]])
-    pred_cost = cost_model.predict(features)[0]
-    pred_time = time_model.predict(features)[0]
+    project_types=["Web", "Mobile", "ML_Model", "Audit"]
+    selected_type=st.selectbox("What type of Project is this?",project_types)
+    
+    input_data = {'Days': input_days, 'Team_Size': input_team}
+    for p_type in ["Web", "Mobile", "ML_Model", "Audit"]:
+        input_data[f'Project_Type_{p_type}'] = 1 if p_type == selected_type else 0
+
+    # FIX: Convert to DataFrame and FORCE the column order to match training
+    feature_df = pd.DataFrame([input_data])
+    feature_df = feature_df.reindex(columns=cols, fill_value=0) # This aligns everything!
+
+    # Calculate Predictions (Using the corrected variable name)
+    pred_cost = cost_model.predict(feature_df)[0]
+    pred_time = time_model.predict(feature_df)[0]
 
     # Metrics Display
     res_col1, res_col2 = st.columns(2)
