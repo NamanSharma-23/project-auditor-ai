@@ -38,6 +38,32 @@ def save_to_github(new_row_list):
     r = requests.put(url, json=payload, headers=headers)
     return r.status_code == 200
 
+def log_performance(num_projects, mae, acc):
+    try:
+        token = st.secrets["GITHUB_TOKEN"]
+        repo = "namansharma-23/project-auditor-ai"
+        path = "model_performance_log.csv"
+        url = f"https://api.github.com/repos/{repo}/contents/{path}"
+        headers = {"Authorization": f"token {token}"}
+
+        resp = requests.get(url, headers=headers).json()
+        content = base64.b64decode(resp['content']).decode('utf-8')
+        sha = resp['sha']
+
+        from datetime import datetime
+        date_str = datetime.now().strftime("%Y-%m-%d")
+        new_row = f"{date_str},{num_projects},{mae:.2f},{acc:.2f}"
+        updated_content = content.strip() + "\n" + new_row
+
+        payload = {
+            "message": "Updating model performance log",
+            "content": base64.b64encode(updated_content.encode('utf-8')).decode('utf-8'),
+            "sha": sha
+        }
+        requests.put(url, json=payload, headers=headers)
+    except:
+        pass
+
 st.set_page_data = "wide"
 st.title("🚀 Naman's AI Project Auditor")
 st.write("This dashboard automatically analyzes project risks and budget.")
@@ -111,6 +137,20 @@ def get_trained_models_with_metrics():
     except Exception as e:
         st.error(f"Model Loading Error: {e}")
         return None, None, 0, 0, []
+    
+    @st.cache_resource 
+    def get_trained_models():
+        try:
+            tdf = pd.read_csv("project_training.csv")
+            # ... (your existing training code) ...
+        
+            # --- ADD THIS LINE BEFORE THE RETURN ---
+            # This tells the log how many projects were used and the new scores
+            log_performance(len(tdf), cost_err, t_acc)
+        
+            return c_model, t_model, cost_err, t_acc, model_cols
+        except:
+            return None, None, 0, 0, []    
 
 # Initialize
 cost_model, time_model, mae, acc, cols = get_trained_models_with_metrics()
@@ -252,5 +292,23 @@ with st.sidebar:
                 st.cache_resource.clear() 
             else:
                 st.error("❌ Failed to save. Check your GitHub Token.")
-                
+
             st.success("Project added! The AI will learn from this on the next refresh.")
+
+st.divider()
+st.header("📈 AI Learning Progress")
+try:
+    perf_df = pd.read_csv("model_performance_log.csv")
+    
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        st.subheader("Cost Error (Lower is Better)")
+        st.line_chart(perf_df, x="Total_Projects", y="MAE_Cost", color="#FF4B4B")
+        
+    with col_p2:
+        st.subheader("Risk Accuracy (Higher is Better)")
+        st.line_chart(perf_df, x="Total_Projects", y="Accuracy_Risk", color="#28a745")
+        
+    st.caption("This chart tracks how the AI improves every time you contribute new project data.")
+except:
+    st.info("Log some data to start tracking AI performance over time!")
