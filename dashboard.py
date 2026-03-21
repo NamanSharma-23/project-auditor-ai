@@ -130,16 +130,28 @@ if cost_model and time_model:
     st.divider()
     st.subheader("💡 What drives the Cost?")
     st.write("This chart shows which factor has the biggest impact on your budget.")
-    
-    # FIXED: The number of Factors must match the number of Coefficients
+
+    # 1. Get the raw factors and impacts
+    all_factors = cols 
+    all_impacts = np.abs(cost_model.coef_)
+
+    # 2. Create the DataFrame
     importance_df = pd.DataFrame({
-        'Factor': cols,
-        'Impact Score': np.abs(cost_model.coef_)
+            'Factor': all_factors,
+            'Impact Score': all_impacts
     })
-    
+
+    # --- NEW: LABEL CLEANING SECTION ---
+    # This turns 'Project_Type_ML_Model' into 'ML Model'
+    importance_df['Factor'] = importance_df['Factor'].str.replace('Project_Type_', '', regex=False)
+    importance_df['Factor'] = importance_df['Factor'].str.replace('_', ' ', regex=False)
+    # -----------------------------------
+
+    # 3. Sort and Display
     importance_df = importance_df.sort_values(by='Impact Score', ascending=False)
     st.bar_chart(data=importance_df, x='Factor', y='Impact Score', color='#FF4B4B')
-    st.caption("Note: Higher bars indicate a larger impact on the final budget prediction.")
+
+    st.caption("Note: The labels above show the cleaned category names for better readability.")
 
     # --- PDF GENERATOR ---
     def create_pdf(days, team, cost, t_status):
