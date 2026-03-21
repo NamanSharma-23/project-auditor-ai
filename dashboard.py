@@ -1,28 +1,11 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import pickle
+import numpy as np
 
 st.title("🚀 Naman's AI Project Auditor")
 st.write("This dashboard automatically analyzes project risks and budget.")
-
-# --- ADD THIS SIDEBAR SECTION ---
-with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=100) # Professional Icon
-    st.title("Engineer Profile")
-    st.markdown("---")
-    st.write("**Name:** Naman")
-    st.write("**Role:** Data Science & Viz Engineer")
-    st.write("**Exp:** 7+ Years")
-    
-    st.info("""
-    Specializing in turning complex datasets 
-    into interactive visual stories using 
-    Python, SQL, and GenAI.
-    """)
-    
-    st.markdown("---")
-    st.write("📍 Based in India")
-    st.write("📧 [Contact me via GitHub](https://github.com/namansharma-23)") # Update with your link
 
 df=pd.read_csv("projects.csv")
 df["Budget"]=df["Budget"].fillna(0)
@@ -61,3 +44,54 @@ st.divider()
 selected_project = st.selectbox("Select a project to audit: ", df["Project"])
 project_info=df[df["Project"]==selected_project]
 st.write(f"The AI suggests: **{project_info['Risk_Level'].values[0]}**")
+
+st.markdown("---")
+
+st.header("🔮 Project Predictor (AI Model)")
+st.info("Adjust the sliders to see how Team Size and Duration affect project risk.")
+
+try:
+    with open("cost_model.pkl", "rb") as f:
+        cost_model=pickle.load(f)
+    with open("time_model.pkl","rb") as f:
+        time_model=pickle.load(f)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        input_days=st.slider("Project Duration(Days)", 1, 150, 40)
+    with col2:
+        input_team=st.slider("Team Size", 1, 20, 5)
+
+    features = np.array([[input_days, input_team]])
+    pred_cost = cost_model.predict(features)[0]
+    pred_time = time_model.predict(features)[0]
+
+    res_col1, res_col2 = st.columns(2)
+    res_col1.metric("Predicted Budget", f"${pred_cost}:,.2f")
+
+    if pred_time == 1:
+        res_col2.success("Status: Likely On-Time")
+    else:
+        res_col2.error("Status: High Risk of Delay")
+
+except FileNotFoundError:
+    st.warning("Please run model_trainer.py first to create the AI brains!")
+
+# --- ADD THIS SIDEBAR SECTION ---
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=100) # Professional Icon
+    st.title("Engineer Profile")
+    st.markdown("---")
+    st.write("**Name:** Naman")
+    st.write("**Role:** Data Science & Viz Engineer")
+    st.write("**Exp:** 7+ Years")
+    
+    st.info("""
+    Specializing in turning complex datasets 
+    into interactive visual stories using 
+    Python, SQL, and GenAI.
+    """)
+    
+    st.markdown("---")
+    st.write("📍 Based in India")
+    st.write("📧 [Contact me via GitHub](https://github.com/namansharma-23)") # Update with your link
