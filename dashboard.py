@@ -50,32 +50,47 @@ st.markdown("---")
 st.header("🔮 Project Predictor (AI Model)")
 st.info("Adjust the sliders to see how Team Size and Duration affect project risk.")
 
-try:
-    with open("cost_model.pkl", "rb") as f:
-        cost_model=pickle.load(f)
-    with open("time_model.pkl","rb") as f:
-        time_model=pickle.load(f)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        input_days=st.slider("Project Duration(Days)", 1, 150, 40)
-    with col2:
-        input_team=st.slider("Team Size", 1, 20, 5)
+# --- SMART MODEL LOADER (Fixes NumPy version errors) ---
+@st.cache_resource 
+def get_trained_models():
+    try:
+        # Uses your project_training.csv from GitHub
+        training_df = pd.read_csv("project_training.csv")
+        X_train = training_df[['Days', 'Team_Size']]
+        
+        # Train fresh models on the server environment
+        from sklearn.linear_model import LinearRegression, LogisticRegression
+        c_model = LinearRegression().fit(X_train, training_df['Actual_Cost'])
+        t_model = LogisticRegression().fit(X_train, training_df['On_Time'])
+        return c_model, t_model
+    except Exception as e:
+        return None, None
 
+# Initialize the models
+cost_model, time_model = get_trained_models()
+
+if cost_model and time_model:
+    col_input1, col_input2 = st.columns(2)
+    with col_input1:
+        input_days = st.slider("Project Duration (Days)", 1, 150, 40)
+    with col_input2:
+        input_team = st.slider("Team Size", 1, 20, 5)
+
+    # Calculation
     features = np.array([[input_days, input_team]])
     pred_cost = cost_model.predict(features)[0]
     pred_time = time_model.predict(features)[0]
 
+    # Visualizing the Result
     res_col1, res_col2 = st.columns(2)
-    res_col1.metric("Predicted Budget", f"${pred_cost}:,.2f")
-
+    res_col1.metric("Predicted Budget", f"${pred_cost:,.2f}")
+    
     if pred_time == 1:
         res_col2.success("Status: Likely On-Time")
     else:
         res_col2.error("Status: High Risk of Delay")
-
-except FileNotFoundError:
-    st.warning("Please run model_trainer.py first to create the AI brains!")
+else:
+    st.warning("Please ensure 'project_training.csv' is uploaded to GitHub to enable AI predictions.")
 
 # --- ADD THIS SIDEBAR SECTION ---
 with st.sidebar:
